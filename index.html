@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mi Pulpería</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div class="app-container">
+
+        <!-- HEADER -->
+        <header class="app-header">
+            <h1 id="pageTitle">Punto de Venta</h1>
+            <div class="header-actions">
+                <button class="header-btn" id="btnSettings" title="Configuración" onclick="Navigation.navigate('settings')">⚙️</button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+
+            <!-- ===== SECTION: POS ===== -->
+            <section id="section-pos" class="section active">
+                <!-- Tipo de venta -->
+                <div id="toggleSaleType" class="toggle-group mb-2">
+                    <button class="toggle-option active" data-value="cash">💵 Contado</button>
+                    <button class="toggle-option" data-value="credit">📝 Fiado</button>
+                    <button class="toggle-option" data-value="consumption">🧾 Consumo</button>
+                </div>
+
+                <!-- Badge cliente seleccionado -->
+                <div id="selectedCustomerBadge" class="mb-2"></div>
+
+                <!-- Búsqueda con escáner -->
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="posSearch" placeholder="Buscar producto o escanear..." autocomplete="off">
+                    <button class="header-btn" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;font-size:0.9rem" onclick="POS.scanBarcode()" title="Escanear código de barras">📷</button>
+                </div>
+
+                <!-- Productos -->
+                <div id="posProducts" class="product-list mb-2"></div>
+
+                <!-- Carrito -->
+                <div class="card">
+                    <div class="flex-between mb-1">
+                        <span class="card-title" style="margin:0">🛒 Carrito</span>
+                        <span id="cartCount" style="background:var(--primary);color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">0</span>
+                    </div>
+                    <div id="cartItems" class="cart-items">
+                        <div class="empty-state" style="padding:20px">
+                            <div class="empty-icon">🛒</div>
+                            <p>Carrito vacío. Haz clic en los productos para agregarlos.</p>
+                        </div>
+                    </div>
+                    <div class="cart-total">
+                        <span>Total:</span>
+                        <span id="cartTotal" class="total-amount">₡0.00</span>
+                    </div>
+                    <button id="btnCheckout" class="btn btn-primary mt-2" disabled style="opacity:0.5">
+                        ✅ Cobrar
+                    </button>
+                </div>
+            </section>
+
+            <!-- ===== SECTION: INVENTORY ===== -->
+            <section id="section-inventory" class="section">
+                <div class="flex-between mb-2">
+                    <div class="search-box" style="flex:1;margin:0 8px 0 0">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="inventorySearch" placeholder="Buscar producto..." autocomplete="off">
+                    </div>
+                    <button class="btn btn-primary btn-sm" style="width:auto;white-space:nowrap" onclick="Inventory.showAddForm()">+ Nuevo</button>
+                </div>
+
+                <div class="card" style="padding:0;overflow:hidden">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th>Precio</th>
+                                    <th>Costo</th>
+                                    <th>Stock</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody">
+                                <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SECTION: CREDIT / FIADO ===== -->
+            <section id="section-credit" class="section">
+                <!-- Tabs: Clientes | Historial -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="customers" onclick="Credit.showTab('customers')">👥 Clientes</button>
+                    <button class="tab" data-tab="history" onclick="Credit.showTab('history')">📋 Historial</button>
+                </div>
+
+                <!-- Clientes -->
+                <div id="tab-customers" class="tab-content active">
+                    <div class="flex-between mb-2">
+                        <div class="search-box" style="flex:1;margin:0 8px 0 0">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="creditSearch" placeholder="Buscar cliente..." autocomplete="off">
+                        </div>
+                        <button class="btn btn-primary btn-sm" style="width:auto;white-space:nowrap" onclick="Credit.showAddCustomerForm()">+ Nuevo</button>
+                    </div>
+                    <div id="customerList"></div>
+                </div>
+
+                <!-- Historial -->
+                <div id="tab-history" class="tab-content">
+                    <div class="search-box mb-2">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="creditHistorySearch" placeholder="Buscar por cliente..." autocomplete="off">
+                    </div>
+                    <div id="creditHistoryList"></div>
+                </div>
+            </section>
+
+            <!-- ===== SECTION: CONSUMPTION ===== -->
+            <section id="section-consumption" class="section">
+                <div class="tabs">
+                    <button class="tab active" data-tab="today" onclick="document.querySelectorAll('#section-consumption .tabs .tab').forEach(t=>t.classList.remove('active'));this.classList.add('active');document.querySelectorAll('#section-consumption .tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-today').classList.add('active');Consumption.renderToday();">📅 Hoy</button>
+                    <button class="tab" data-tab="history" onclick="document.querySelectorAll('#section-consumption .tabs .tab').forEach(t=>t.classList.remove('active'));this.classList.add('active');document.querySelectorAll('#section-consumption .tab-content').forEach(c=>c.classList.remove('active'));document.getElementById('tab-history').classList.add('active');Consumption.renderHistory(document.getElementById('consumptionHistorySearch').value);">📊 Historial</button>
+                </div>
+
+                <div id="tab-today" class="tab-content active">
+                    <div id="consumptionList"></div>
+                </div>
+
+                <div id="tab-history" class="tab-content">
+                    <div class="search-box mb-2">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="consumptionHistorySearch" placeholder="Buscar consumo..." autocomplete="off">
+                    </div>
+                    <div class="card mb-2">
+                        <div class="flex-between">
+                            <span class="card-title" style="margin:0">Total consumos</span>
+                            <span id="consumptionTotal" class="text-warning" style="font-weight:700;font-size:1.2rem">₡0.00</span>
+                        </div>
+                    </div>
+                    <div id="consumptionHistoryList"></div>
+                </div>
+            </section>
+
+            <!-- ===== SECTION: REPORTS ===== -->
+            <section id="section-reports" class="section">
+                <!-- Fechas -->
+                <div class="card">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Desde</label>
+                            <input type="date" id="reportStartDate" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Hasta</label>
+                            <input type="date" id="reportEndDate" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card stat-success">
+                        <div class="stat-value" id="statSalesTotal">₡0.00</div>
+                        <div class="stat-label">Total Ventas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statSalesCount">0</div>
+                        <div class="stat-label"># Ventas</div>
+                    </div>
+                    <div class="stat-card stat-success">
+                        <div class="stat-value" id="statCashTotal">₡0.00</div>
+                        <div class="stat-label">Contado</div>
+                    </div>
+                    <div class="stat-card stat-warning">
+                        <div class="stat-value" id="statCreditTotal">₡0.00</div>
+                        <div class="stat-label">Fiado</div>
+                    </div>
+                    <div class="stat-card stat-info">
+                        <div class="stat-value" id="statPayments">₡0.00</div>
+                        <div class="stat-label">Cobros</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statConsumption">₡0.00</div>
+                        <div class="stat-label">Consumo</div>
+                    </div>
+                </div>
+
+                <!-- Productos más vendidos -->
+                <div class="card">
+                    <div class="card-title">🏆 Productos más vendidos</div>
+                    <div id="topProducts"></div>
+                </div>
+
+                <!-- Ventas recientes -->
+                <div class="card">
+                    <div class="card-title">📋 Ventas del período</div>
+                    <div id="recentSales"></div>
+                </div>
+
+                <!-- Deudores -->
+                <div class="card">
+                    <div class="flex-between mb-1">
+                        <span class="card-title" style="margin:0">⚠️ Deudores</span>
+                        <span id="totalDebt" class="text-danger" style="font-weight:700;font-size:1.1rem">₡0.00</span>
+                    </div>
+                    <div id="debtorsList"></div>
+                </div>
+
+                <!-- Ganancia estimada -->
+                <div class="card">
+                    <div class="flex-between">
+                        <span class="card-title" style="margin:0">📈 Ganancia estimada</span>
+                        <span id="estimatedProfit" style="font-weight:700;font-size:1.2rem">₡0.00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== SECTION: SETTINGS ===== -->
+            <section id="section-settings" class="section">
+                <div class="card">
+                    <div class="card-title">⚙️ Configuración de la tienda</div>
+                    <div class="form-group">
+                        <label>Nombre de la tienda</label>
+                        <input type="text" id="storeName" class="form-control" placeholder="Mi Pulpería">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Símbolo de moneda</label>
+                            <input type="text" id="storeCurrency" class="form-control" placeholder="₡" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label>Impuesto (%)</label>
+                            <input type="number" id="taxRate" class="form-control" placeholder="0" min="0" max="100" step="0.01">
+                        </div>
+                    </div>
+                    <button id="btnSaveSettings" class="btn btn-primary mt-2">💾 Guardar</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📦 Respaldos</div>
+                    <p class="text-muted mb-2" style="font-size:0.85rem">Exporta tus datos para hacer una copia de seguridad o impórtalos desde otro dispositivo.</p>
+                    <div class="btn-group mb-2">
+                        <button id="btnExportData" class="btn btn-secondary">📤 Exportar</button>
+                        <button id="btnImportData" class="btn btn-outline">📥 Importar</button>
+                    </div>
+                    <input type="file" id="importFile" accept=".json" style="display:none">
+                </div>
+
+                <div class="card" style="border-color:var(--danger)">
+                    <div class="card-title text-danger">⚠️ Peligro</div>
+                    <p class="text-muted mb-2" style="font-size:0.85rem">Elimina todos los datos de la aplicación. Esta acción no se puede deshacer.</p>
+                    <button id="btnClearData" class="btn btn-danger">🗑️ Limpiar todos los datos</button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-section="pos">
+                <span class="nav-icon">🏪</span>
+                <span>Venta</span>
+            </button>
+            <button class="nav-item" data-section="inventory">
+                <span class="nav-icon">📦</span>
+                <span>Inventario</span>
+            </button>
+            <button class="nav-item" data-section="credit">
+                <span class="nav-icon">📝</span>
+                <span>Fiado</span>
+            </button>
+            <button class="nav-item" data-section="consumption">
+                <span class="nav-icon">🧾</span>
+                <span>Consumo</span>
+            </button>
+            <button class="nav-item" data-section="reports">
+                <span class="nav-icon">📊</span>
+                <span>Reportes</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- ===== MODALS ===== -->
+
+    <!-- Modal: Producto -->
+    <div id="productModal" class="modal-overlay">
+        <div class="modal-content modal-center">
+            <div class="modal-header">
+                <h3 id="modalTitle">Agregar Producto</h3>
+                <button class="modal-close" onclick="Inventory.closeForm()">✕</button>
+            </div>
+            <form id="productForm" onsubmit="event.preventDefault();Inventory.saveProduct()">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label>Nombre del producto *</label>
+                    <input type="text" id="productName" class="form-control" placeholder="Ej: Coca Cola 600ml" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <input type="text" id="productCategory" class="form-control" placeholder="Ej: Bebidas, Abarrotes, etc." autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Código de barras (opcional)</label>
+                    <div class="flex gap-1">
+                        <input type="text" id="productBarcode" class="form-control" placeholder="Escanear o escribir código" autocomplete="off" style="flex:1">
+                        <button type="button" class="btn btn-sm btn-outline" onclick="Inventory.startBarcodeScan()" title="Escanear código de barras">📷</button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Precio de venta *</label>
+                        <input type="number" id="productPrice" class="form-control" placeholder="0" min="0.01" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio de costo</label>
+                        <input type="number" id="productCost" class="form-control" placeholder="0" min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock *</label>
+                        <input type="number" id="productStock" class="form-control" placeholder="0" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Vender por</label>
+                        <select id="productSaleType" class="form-control">
+                            <option value="unit">Unidad</option>
+                            <option value="weight">Libra / Peso</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="productFiado" checked>
+                        Permitir venta fiado
+                    </label>
+                </div>
+                <div class="btn-group mt-2">
+                    <button type="button" class="btn btn-outline" onclick="Inventory.closeForm()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">💾 Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Cliente Fiado -->
+    <div id="customerFormModal" class="modal-overlay">
+        <div class="modal-content modal-center">
+            <div class="modal-header">
+                <h3>Nuevo Cliente Fiado</h3>
+                <button class="modal-close" onclick="Credit.closeCustomerForm()">✕</button>
+            </div>
+            <form id="customerForm" onsubmit="event.preventDefault();Credit.saveCustomer()">
+                <div class="form-group">
+                    <label>Nombre del cliente *</label>
+                    <input type="text" id="customerName" class="form-control" placeholder="Nombre completo" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="tel" id="customerPhone" class="form-control" placeholder="Número de teléfono" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea id="customerNotes" class="form-control" placeholder="Dirección, referencias, etc."></textarea>
+                </div>
+                <div class="btn-group mt-2">
+                    <button type="button" class="btn btn-outline" onclick="Credit.closeCustomerForm()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">💾 Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Detalle Cliente Fiado -->
+    <div id="customerDetailModal" class="modal-overlay">
+        <div class="modal-content modal-center">
+            <div class="modal-header">
+                <h3 id="detailCustomerName">Cliente</h3>
+                <button class="modal-close" onclick="Credit.closeCustomerDetail()">✕</button>
+            </div>
+            <div class="mb-2">
+                <div class="flex-between mb-1">
+                    <span class="text-muted">Teléfono:</span>
+                    <span id="detailCustomerPhone">—</span>
+                </div>
+                <div class="flex-between mb-1">
+                    <span class="text-muted">Notas:</span>
+                    <span id="detailCustomerNotes">—</span>
+                </div>
+                <div class="flex-between" style="padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+                    <span style="font-weight:600">Saldo pendiente:</span>
+                    <span id="detailCustomerBalance" class="customer-balance" style="font-size:1.3rem">₡0.00</span>
+                </div>
+            </div>
+            <div class="card" style="padding:0;background:transparent">
+                <div class="card-title" style="padding:10px 0">📋 Movimientos</div>
+                <div id="customerTransactions"></div>
+            </div>
+            <div class="btn-group mt-2">
+                <button id="btnMakePayment" class="btn btn-secondary">💰 Registrar Abono</button>
+                <button id="btnCloseDetail" class="btn btn-outline">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Seleccionar Cliente para Fiado en POS -->
+    <div id="creditCustomerModal" class="modal-overlay">
+        <div class="modal-content modal-center">
+            <div class="modal-header">
+                <h3>Seleccionar Cliente</h3>
+                <button class="modal-close" onclick="POS.closeCreditModal()">✕</button>
+            </div>
+            <p class="text-muted mb-2" style="font-size:0.85rem">Selecciona el cliente para registrar la venta fiado:</p>
+            <div id="creditCustomerList"></div>
+            <button class="btn btn-outline mt-2" onclick="POS.closeCreditModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal: Ingresar peso (productos por libra) -->
+    <div id="weightModal" class="modal-overlay">
+        <div class="modal-content modal-center">
+            <div class="modal-header">
+                <h3 id="weightModalTitle">Ingresar peso</h3>
+                <button class="modal-close" onclick="POS.closeWeightModal()">✕</button>
+            </div>
+            <div class="mb-2">
+                <div class="flex-between mb-1">
+                    <span class="text-muted">Producto:</span>
+                    <span id="weightProductName" style="font-weight:600">—</span>
+                </div>
+                <div class="flex-between mb-2">
+                    <span class="text-muted">Precio por libra:</span>
+                    <span id="weightPrice" style="font-weight:600;color:var(--secondary)">₡0.00</span>
+                </div>
+                <div class="flex-between mb-2">
+                    <span class="text-muted">Stock disponible:</span>
+                    <span id="weightStock" style="font-weight:600">0 lbs</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Peso en libras *</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <input type="number" id="weightInput" class="form-control" placeholder="0.00" min="0.01" step="0.01" style="font-size:1.5rem;font-weight:700;text-align:center">
+                    <span style="font-size:1.2rem;font-weight:600">lbs</span>
+                </div>
+            </div>
+            <div id="weightPreview" class="card" style="display:none">
+                <div class="flex-between">
+                    <span>Total a pagar:</span>
+                    <span id="weightTotalPreview" style="font-weight:700;font-size:1.2rem;color:var(--secondary)">₡0.00</span>
+                </div>
+            </div>
+            <input type="hidden" id="weightProductId">
+            <div class="btn-group mt-2">
+                <button class="btn btn-outline" onclick="POS.closeWeightModal()">Cancelar</button>
+                <button id="btnConfirmWeight" class="btn btn-primary" type="button">✅ Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/db.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
